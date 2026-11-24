@@ -1,0 +1,24 @@
+menu "Dongle"
+
+config DONGLE_CAN_TX_GPIO
+    int "CAN TX GPIO (to the transceiver's TXD)"
+    default 5
+    help
+        In listen-only mode the controller never drives this pin, but the driver still claims it.
+
+config DONGLE_CAN_RX_GPIO
+    int "CAN RX GPIO (from the transceiver's RXD)"
+    default 4
+
+config DONGLE_CAN_BITRATE
+    int "CAN bitrate in bit/s, 0 to detect"
+    default 0
+    help
+        0 tries 500k, 250k, 125k and 1M in turn, listening only, and keeps the first one that
+        carries clean frames. Mercedes diagnostic CAN is usually 500k.
+
+config DONGLE_BLE_NAME
+    string "BLE device name"
+    default "dongle"
+
+endmenu
