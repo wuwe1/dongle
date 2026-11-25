@@ -28,7 +28,7 @@ UNO 是 5V 电平，ESP32-S3 是 3.3V。套件模块接到 ESP32 时，能用 3.
 
 现在要买的（打勾的已买）：
 
-- [ ] **ESP32-S3-DEV-KIT-N16R8-M** ×2（WROOM-1 N16R8 模组，排针已焊，板载天线）。只有一个 Type-C 口，旁边有
+- [x] **ESP32-S3-DEV-KIT-N16R8-M**（已买；WROOM-1 N16R8 模组，排针已焊，板载天线）。只有一个 Type-C 口，旁边有
       CH343（USB 转串口），应该还带一颗 USB 集线器芯片，所以一个口同时有串口和原生 USB。到货后在电脑上看看
       出现几个设备；如果只有串口，就把 `firmware/sdkconfig.defaults` 的 console 改成 UART。板上标 RGB 的灯
       多半是一颗可编程彩灯（WS2812 类），引脚号按板子的资料核对
