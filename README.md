@@ -1,41 +1,53 @@
-# dongle — 让 Claude 通过一个小硬件接进别的设备
+# dongle — 让 Claude 通过一个小硬件去"摸"各种设备
 
-一个 U 盘大小的东西：插进某个设备（第一个目标是车的 OBD-II 口），通过蓝牙/WiFi 连到手机或电脑，
-由 Claude 来读懂、以后再驱动那台设备。硬件只是一根"管子"，脑子在 Claude 那边。
-
-**v0（现在）：只读的 CAN 嗅探器**。ESP32 + CAN 收发器，用 TWAI 控制器的硬件 listen-only 模式——
-它**物理上不发送任何东西，连 ACK 位都不回**，所以插在车上不可能干扰总线；固件里也没有任何发帧的代码路径。
+一个 U 盘大小的东西：插到某个设备上（传感器、红外遥控的家电、路由器的调试串口……），
+通过 USB/WiFi 接到 Claude。**dongle 只提供底层的电信号操作，协议和含义由 Claude 自己去摸索。**
 
 ```
-OBD-II ──CAN──▶ 收发器 ──▶ ESP32 ──USB──▶ 电脑：完整 candump 日志 ──▶ tools/canlog.py / Claude Code
-                                  └─BLE──▶ 手机：按 ID 过滤的帧、stats、打 mark
+  ④ 含义：这个字节是温度？是"开机"？      ← Claude：查手册、做实验
+  ③ 具体芯片/设备的协议（BME280 寄存器表）  ← Claude
+  ② 总线：GPIO / ADC / PWM / I2C / SPI / UART / 红外 / CAN / USB   ← dongle 提供，就这十来种
+  ① 电气：电压、接哪个针脚                 ← 人来接（3.3V！接错会烧）
 ```
+
+不给每个设备写驱动，而是给 Claude 一套原始操作（MCP 工具）。比如插上一个不认识的传感器：
+Claude 先 `i2c scan`，看到 0x76 → 猜是 BME280 → 读 ID 寄存器确认 → 按手册算出温度。没有一行 BME280 驱动。
+
+## 为什么是 ESP32-S3
+
+单片机（不是 RK3588 那种跑 Linux 的处理器）：脑子在 Claude 那边，dongle 只要接口多、带无线、小、便宜、低功耗、
+时序精确到微秒。ESP32-S3 自带 WiFi + BLE、几十个 GPIO、硬件 UART/I2C/SPI/CAN/ADC/PWM/RMT、还能当 USB 设备。
+同类可以对比玩：树莓派 Pico 2 W（RP2350，PIO 适合怪协议和逻辑分析）。
+
+## 现状
+
+| | 状态 |
+|---|---|
+| **CAN 只读嗅探**（第一个前端，原本为车做的） | ✅ 固件对 S3/C3 零警告编译；主机测试通过；**没上过真硬件**。车的事暂停（贵、有风险），文档留在 `docs/car.md` |
+| **通用命令协议 + MCP server**（GPIO/I2C/UART 起步） | ⏳ 设计和任务见 GitHub issue「v1：通用总线工具」 |
 
 ## 目录
 
 | | |
 |---|---|
-| `firmware/` | ESP-IDF 固件（ESP32-S3 / C3）。`./build.sh` 在 ESP-IDF 的 docker 镜像里编译，本地只要 docker |
-| `firmware/test/run.sh` | 主机上的测试：固件的行格式（C，gcc 编译）+ canlog 能读懂固件写的每一行 |
-| `tools/canlog.py` | 读 candump 日志：`summary` 每个 ID 的周期和哪些字节在动；`diff` 找"按下某个键时才出现的字节值" |
-| `docs/car.md` | 接线、供电、奔驰的网关问题、安全与法律、第一次上车的实验步骤 |
-| `docs/architecture.md` | 为什么这样设计，v1/v2 怎么把它接到手机上的 Claude（和 voice-agent） |
+| `firmware/` | ESP-IDF 固件。`./build.sh esp32s3` 在 ESP-IDF 官方 docker 镜像里编译，本地只要 docker |
+| `firmware/main/frame.c` | 不依赖 ESP-IDF 的纯逻辑，能在电脑上测：`firmware/test/run.sh` |
+| `tools/canlog.py` | candump 日志分析：`summary`、`diff`（找"某个动作时才出现的字节值"） |
+| `docs/architecture.md` | 设计、分层、路线图 |
+| `docs/car.md` | CAN/OBD 接线和奔驰网关问题（暂停中） |
 
-## 快速开始
+## 编译和测试（不需要板子）
 
 ```bash
-cd firmware && ./build.sh esp32s3           # 或 esp32c3；改引脚/波特率：见 main/Kconfig.projbuild
-# 烧录（需要本机有 esptool：pip install esptool），端口按实际：
-(cd build-esp32s3 && esptool.py --chip esp32s3 -p /dev/cu.usbmodem* write_flash @flash_args)
-cat /dev/cu.usbmodem* | tee drive.log        # 收日志；grep '^(' 就是纯 candump 格式
-cd ..; python3 tools/canlog.py summary drive.log
-python3 tools/canlog.py diff drive.log --base idle --action lock
+cd firmware && ./build.sh esp32s3 esp32c3   # 交叉编译：x86 上生成 Xtensa / RISC-V 的固件
+firmware/test/run.sh                        # 纯逻辑的主机测试 + canlog 读固件输出
+python3 -m unittest discover -s tools
 ```
 
-手机端 v0 用任意 BLE 串口工具（nRF Connect、LightBlue）连 `dongle`，订阅 TX，往 RX 写命令：
-`stats` · `mark lock` · `filter 2B0,7E8` · `filter off`。
+板子到了再烧录：`(cd firmware/build-esp32s3 && esptool.py --chip esp32s3 -p /dev/cu.usbmodem* write_flash @flash_args)`
 
-## 状态
+## 入门清单（都是 3.3V，安全）
 
-在云端验证过的：固件对 ESP32-S3 和 C3 都能零警告编译；行格式和过滤解析有主机测试；canlog 用模拟的
-"按锁车键"数据能找出目标字节，不会被滚动计数器干扰。**还没上过真硬件、真车**——见 `docs/car.md` 的第一次实验。
+ESP32-S3 开发板（可加 Pico 2 W）、面包板、杜邦线；I2C 传感器（BME280/SHT30）、OLED（SSD1306）；
+红外接收头 + 红外发射管（学空调/电视遥控）；WS2812 灯带；一台旧路由器（找调试串口拿 root shell）；
+几十块的逻辑分析仪（配 sigrok/PulseView 看波形）。⚠️ 别直接接 5V 信号；RS-232 是 ±12V；永远不碰 220V。
