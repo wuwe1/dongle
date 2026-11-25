@@ -35,6 +35,7 @@ Claude 先 `i2c scan`，看到 0x76 → 猜是 BME280 → 读 ID 寄存器确认
 | `tools/canlog.py` | candump 日志分析：`summary`、`diff`（找"某个动作时才出现的字节值"） |
 | `docs/architecture.md` | 设计、分层、路线图 |
 | `docs/car.md` | CAN/OBD 接线和奔驰网关问题（暂停中） |
+| `docs/bench.md` | 手上的工具和 Arduino 套件（按总线分）、还要买什么、5V/3.3V 注意事项 |
 
 ## 编译和测试（不需要板子）
 
