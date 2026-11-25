@@ -26,13 +26,16 @@ UNO 是 5V 电平，ESP32-S3 是 3.3V。套件模块接到 ESP32 时，能用 3.
 
 ## 要买
 
-- [ ] ESP32-S3 开发板 ×2（N16R8）。最好选两个 Type-C 口（USB + COM）的；只有一个口、且经过 CH34x 串口芯片转的，
-      要把 `firmware/sdkconfig.defaults` 里的 console 改成 UART
+现在只买这三样：
+
+- [ ] **ESP32-S3-DEV-KIT-N16R8-M** ×2（WROOM-1 N16R8 模组，排针已焊，板载天线）。只有一个 Type-C 口，旁边有
+      CH343（USB 转串口），应该还带一颗 USB 集线器芯片，所以一个口同时有串口和原生 USB。到货后在电脑上看看
+      出现几个设备；如果只有串口，就把 `firmware/sdkconfig.defaults` 的 console 改成 UART。板上标 RGB 的灯
+      多半是一颗可编程彩灯（WS2812 类），引脚号按板子的资料核对
 - [ ] **BME280**（I2C，0x76/0x77；读 ID 寄存器 0xD0：0x60 是 BME280，0x58 是 BMP280，可以拿来鉴别假货）
-- [ ] **SSD1306 0.96 寸 OLED**（I2C，0x3C）
-- [ ] 可选：PCF8574 转接板，把 LCD1602 变成 I2C 设备（0x27 / 0x3F）
-- [ ] 940nm 红外发射 LED 几个，加 S8050 三极管（控制空调、电视）
-- [ ] 逻辑分析仪（24MHz 8 通道，Saleae 兼容款，配 PulseView）
-- [ ] USB 转 TTL（CH340/CP2102，能切 3.3V），接路由器调试口
-- [ ] 面包板、杜邦线（公对公、公对母）
-- [ ] 可选：WS2812 灯带、一台旧路由器、焊锡丝、助焊剂、吸锡带
+- [ ] **逻辑分析仪**：24MHz 8 通道、Saleae 兼容款，详情页写着支持 PulseView/sigrok，输入不超过 5V
+
+以后再说：SSD1306 OLED（I2C，0x3C）、PCF8574 转接板（让 LCD1602 变成 I2C 设备）、940nm 红外发射管加
+S8050、USB 转 TTL（CH340/CP2102，能切 3.3V）、旧路由器、WS2812 灯带（板载 RGB 灯够先练手）
+
+已有：面包板、杜邦线
